@@ -5,9 +5,9 @@ all: clean format test build
 ## help: Prints a list of available build targets.
 help:
 	echo "Usage: make <OPTIONS> ... <TARGETS>"
-	echo ""
+	echo
 	echo "Available targets are:"
-	echo ''
+	echo
 	sed -n 's/^##//p' ${PWD}/Makefile | column -t -s ':' | sed -e 's/^/ /'
 	echo
 	echo "Targets run by default are: `sed -n 's/^all: //p' ./Makefile | sed -e 's/ /, /g' | sed -e 's/\(.*\), /\1, and /'`"
