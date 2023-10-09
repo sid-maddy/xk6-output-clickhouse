@@ -111,7 +111,7 @@ func (o *Output) Stop() error {
 	return nil
 }
 
-// flushMetrics periodically flushes buffered metric samples to ClickHouse
+// flushMetrics periodically flushes buffered metric samples to ClickHouse.
 func (o *Output) flushMetrics() {
 	ctx := context.Background()
 
