@@ -210,8 +210,8 @@ github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
-go.k6.io/k6 v0.46.0 h1:zvPQRZw229XVEvzZ5C6GrAw1dWXU2MU6DhmVGb4UWRM=
-go.k6.io/k6 v0.46.0/go.mod h1:3T693CkQuj8OBxlo3Bi32yua/9UfzYMnAwku3MV0TeE=
+go.k6.io/k6 v0.47.0 h1:o5rmxpFbdxzdL0xNqBtaGkHGzEnbnt8ixfBOxEGsHQY=
+go.k6.io/k6 v0.47.0/go.mod h1:ulXsmMVRoCZzqV/ZgMeifJ9A484pKadqGT2sfR3eKQg=
 go.mongodb.org/mongo-driver v1.11.4/go.mod h1:PTSz5yu21bkT/wXpkS7WR5f0ddqw5quethTUn9WM+2g=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
