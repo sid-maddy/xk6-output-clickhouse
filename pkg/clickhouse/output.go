@@ -10,8 +10,6 @@ import (
 	"go.k6.io/k6/output"
 )
 
-const runOutputTableName = "run_output"
-
 // Output implements the output.Output interface.
 type Output struct {
 	output.SampleBuffer
@@ -28,6 +26,8 @@ var _ output.Output = new(Output)
 // outputRow represents a row of the run output.
 // NOTE: The fields are in snake_case to match the column names in the ClickHouse table.
 type outputRow struct {
+	OrgID    string            `ch:"org_id"`
+	Region   string            `ch:"region"`
 	RunID    string            `ch:"run_id"`
 	Time     time.Time         `ch:"time"`
 	Metric   string            `ch:"metric"`
@@ -80,8 +80,11 @@ func (o *Output) Start() error {
 	}
 
 	o.logger.Debug("verifying run output table")
-	if err := o.conn.Exec(ctx, "DESCRIBE TABLE run_output"); err != nil {
-		o.logger.WithField("table", runOutputTableName).WithError(err).Error("run output table does not exist")
+	if err := o.conn.Exec(ctx, fmt.Sprintf("DESCRIBE TABLE %s.%s", database, o.config.Table)); err != nil {
+		o.logger.
+			WithFields(logrus.Fields{"db": database, "table": o.config.Table}).
+			WithError(err).
+			Error("run output table does not exist")
 		return fmt.Errorf("could not verify run output table: %w", err)
 	}
 
@@ -125,7 +128,7 @@ func (o *Output) flushMetrics() {
 
 	batch, err := o.conn.PrepareBatch(
 		ctx,
-		fmt.Sprintf("INSERT INTO %s.%s", o.config.ClientOptions.Auth.Database, runOutputTableName),
+		fmt.Sprintf("INSERT INTO %s.%s", o.config.ClientOptions.Auth.Database, o.config.Table),
 	)
 	if err != nil {
 		o.logger.WithError(err).Error("error preparing batch insert query")
@@ -139,6 +142,8 @@ func (o *Output) flushMetrics() {
 
 		for _, sample := range samples {
 			if err := batch.AppendStruct(&outputRow{
+				OrgID:    o.config.OrgID,
+				Region:   o.config.Region,
 				RunID:    o.config.RunID,
 				Time:     sample.Time,
 				Metric:   sample.Metric.Name,
@@ -158,9 +163,6 @@ func (o *Output) flushMetrics() {
 	}
 
 	o.logger.
-		WithFields(map[string]interface{}{
-			"duration": time.Since(start),
-			"count":    count,
-		}).
+		WithFields(logrus.Fields{"duration": time.Since(start), "count": count}).
 		Debug("emitted samples")
 }

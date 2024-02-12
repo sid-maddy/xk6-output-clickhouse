@@ -14,7 +14,11 @@ import (
 // Config is the config for the ClickHouse output extension.
 type Config struct {
 	DSN   string `json:"dsn"`
-	RunID string `json:"run_id"`
+	Table string `json:"table"`
+
+	OrgID  string `json:"org_id"`
+	Region string `json:"region"`
+	RunID  string `json:"run_id"`
 
 	PushInterval  types.NullDuration `json:"push_interval"`
 	LogLevel      logrus.Level       `json:"log_level"`
@@ -24,7 +28,10 @@ type Config struct {
 // NewConfig creates a new Config instance from the provided output.Params.
 func NewConfig(params output.Params) (*Config, error) {
 	cfg := Config{
+		Table: "run_output",
+
 		PushInterval: types.NullDurationFrom(1 * time.Second),
+		LogLevel:     logrus.InfoLevel,
 	}
 
 	// Apply from JSON
@@ -45,6 +52,15 @@ func NewConfig(params output.Params) (*Config, error) {
 			switch k {
 			case "K6_CLICKHOUSE_DSN":
 				cfg.DSN = v
+
+			case "K6_CLICKHOUSE_TABLE":
+				cfg.Table = v
+
+			case "K6_CLICKHOUSE_ORG_ID":
+				cfg.OrgID = v
+
+			case "K6_CLICKHOUSE_REGION":
+				cfg.Region = v
 
 			case "K6_CLICKHOUSE_RUN_ID":
 				cfg.RunID = v
@@ -89,6 +105,18 @@ func NewConfig(params output.Params) (*Config, error) {
 func (c Config) apply(cfg Config) Config {
 	if cfg.DSN != "" {
 		c.DSN = cfg.DSN
+	}
+
+	if cfg.Table != "" {
+		c.Table = cfg.Table
+	}
+
+	if cfg.OrgID != "" {
+		c.OrgID = cfg.OrgID
+	}
+
+	if cfg.Region != "" {
+		c.Region = cfg.Region
 	}
 
 	if cfg.RunID != "" {
