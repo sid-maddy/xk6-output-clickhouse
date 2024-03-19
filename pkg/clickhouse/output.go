@@ -27,7 +27,7 @@ var _ output.Output = new(Output)
 // NOTE: The fields are in snake_case to match the column names in the ClickHouse table.
 type outputRow struct {
 	OrgID    string            `ch:"org_id"`
-	Region   string            `ch:"region"`
+	RegionID string            `ch:"region_id"`
 	RunID    string            `ch:"run_id"`
 	Time     time.Time         `ch:"time"`
 	Metric   string            `ch:"metric"`
@@ -143,7 +143,7 @@ func (o *Output) flushMetrics() {
 		for _, sample := range samples {
 			if err := batch.AppendStruct(&outputRow{
 				OrgID:    o.config.OrgID,
-				Region:   o.config.Region,
+				RegionID: o.config.RegionID,
 				RunID:    o.config.RunID,
 				Time:     sample.Time,
 				Metric:   sample.Metric.Name,
