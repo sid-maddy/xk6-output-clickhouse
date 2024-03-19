@@ -16,9 +16,9 @@ type Config struct {
 	DSN   string `json:"dsn"`
 	Table string `json:"table"`
 
-	OrgID  string `json:"org_id"`
-	Region string `json:"region"`
-	RunID  string `json:"run_id"`
+	OrgID    string `json:"org_id"`
+	RegionID string `json:"region_id"`
+	RunID    string `json:"run_id"`
 
 	PushInterval  types.NullDuration `json:"push_interval"`
 	LogLevel      logrus.Level       `json:"log_level"`
@@ -59,8 +59,8 @@ func NewConfig(params output.Params) (*Config, error) {
 			case "K6_CLICKHOUSE_ORG_ID":
 				cfg.OrgID = v
 
-			case "K6_CLICKHOUSE_REGION":
-				cfg.Region = v
+			case "K6_CLICKHOUSE_REGION_ID":
+				cfg.RegionID = v
 
 			case "K6_CLICKHOUSE_RUN_ID":
 				cfg.RunID = v
@@ -115,8 +115,8 @@ func (c Config) apply(cfg Config) Config {
 		c.OrgID = cfg.OrgID
 	}
 
-	if cfg.Region != "" {
-		c.Region = cfg.Region
+	if cfg.RegionID != "" {
+		c.RegionID = cfg.RegionID
 	}
 
 	if cfg.RunID != "" {
