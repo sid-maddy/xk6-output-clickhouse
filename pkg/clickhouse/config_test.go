@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	clickhouse "github.com/sid-maddy/xk6-output-clickhouse/pkg/clickhouse"
+	"github.com/sid-maddy/xk6-output-clickhouse/pkg/clickhouse"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/lib/types"
@@ -17,11 +17,13 @@ func TestConfig(t *testing.T) {
 
 	// TODO: add more cases
 	testCases := map[string]struct {
+		env map[string]string
+
+		arg string
+		err string
+
 		jsonRaw json.RawMessage
-		env     map[string]string
-		arg     string
 		config  clickhouse.Config
-		err     string
 	}{
 		"default": {
 			config: clickhouse.Config{
@@ -42,6 +44,7 @@ func TestConfig(t *testing.T) {
 				"K6_CLICKHOUSE_PUSH_INTERVAL": "4ms",
 				"K6_CLICKHOUSE_LOG_LEVEL":     "debug",
 			},
+
 			config: clickhouse.Config{
 				DSN:   "clickhouse://user:pass@localhost:9000/k6",
 				Table: "k6_run_output",
@@ -65,6 +68,9 @@ func TestConfig(t *testing.T) {
 				"K6_CLICKHOUSE_PUSH_INTERVAL": "4something",
 				"K6_CLICKHOUSE_LOG_LEVEL":     "debug",
 			},
+
+			err: `time: unknown unit "something" in duration "4something"`,
+
 			config: clickhouse.Config{
 				DSN:   "clickhouse://user:pass@localhost:9000/k6",
 				Table: "k6_run_output",
@@ -76,12 +82,10 @@ func TestConfig(t *testing.T) {
 				PushInterval: types.NullDurationFrom(4 * time.Second),
 				LogLevel:     logrus.DebugLevel,
 			},
-			err: `time: unknown unit "something" in duration "4something"`,
 		},
 	}
 
 	for name, testCase := range testCases {
-		testCase := testCase
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
