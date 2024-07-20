@@ -3,7 +3,7 @@ module github.com/sid-maddy/xk6-output-clickhouse
 go 1.21
 
 require (
-	github.com/ClickHouse/clickhouse-go/v2 v2.25.0
+	github.com/ClickHouse/clickhouse-go/v2 v2.26.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
 	go.k6.io/k6 v0.51.0
