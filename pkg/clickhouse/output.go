@@ -12,13 +12,13 @@ import (
 
 // Output implements the output.Output interface.
 type Output struct {
-	output.SampleBuffer
-
-	config          Config
-	conn            clickhouse.Conn
-	periodicFlusher *output.PeriodicFlusher
+	config Config
+	conn   clickhouse.Conn
 
 	logger logrus.FieldLogger
+
+	periodicFlusher *output.PeriodicFlusher
+	output.SampleBuffer
 }
 
 var _ output.Output = new(Output)
@@ -26,14 +26,16 @@ var _ output.Output = new(Output)
 // outputRow represents a row of the run output.
 // NOTE: The fields are in snake_case to match the column names in the ClickHouse table.
 type outputRow struct {
-	OrgID    string            `ch:"org_id"`
-	RegionID string            `ch:"region_id"`
-	RunID    string            `ch:"run_id"`
-	Time     time.Time         `ch:"time"`
-	Metric   string            `ch:"metric"`
-	Value    float64           `ch:"value"`
+	Time time.Time `ch:"time"`
+
 	Tags     map[string]string `ch:"tags"`
 	Metadata map[string]string `ch:"metadata"`
+
+	OrgID  string  `ch:"org_id"`
+	Region string  `ch:"region"`
+	RunID  string  `ch:"run_id"`
+	Metric string  `ch:"metric"`
+	Value  float64 `ch:"value"`
 }
 
 // New creates an instance of the emitter.
@@ -74,8 +76,9 @@ func (o *Output) Start() error {
 
 	database := o.config.ClientOptions.Auth.Database
 	o.logger.WithField("db", database).Debug("verifying provided database")
-	if err := o.conn.Exec(ctx, fmt.Sprintf("USE %s", database)); err != nil {
+	if err := o.conn.Exec(ctx, "USE "+database); err != nil {
 		o.logger.WithField("db", database).WithError(err).Error("provided database does not exist")
+
 		return fmt.Errorf("could not verify provided database: %w", err)
 	}
 
@@ -85,6 +88,7 @@ func (o *Output) Start() error {
 			WithFields(logrus.Fields{"db": database, "table": o.config.Table}).
 			WithError(err).
 			Error("run output table does not exist")
+
 		return fmt.Errorf("could not verify run output table: %w", err)
 	}
 
@@ -132,6 +136,7 @@ func (o *Output) flushMetrics() {
 	)
 	if err != nil {
 		o.logger.WithError(err).Error("error preparing batch insert query")
+
 		return
 	}
 
@@ -142,16 +147,19 @@ func (o *Output) flushMetrics() {
 
 		for _, sample := range samples {
 			if err := batch.AppendStruct(&outputRow{
-				OrgID:    o.config.OrgID,
-				RegionID: o.config.RegionID,
-				RunID:    o.config.RunID,
-				Time:     sample.Time,
-				Metric:   sample.Metric.Name,
-				Value:    sample.Value,
+				Time: sample.Time,
+
 				Tags:     sample.Tags.Map(),
 				Metadata: sample.Metadata,
+
+				OrgID:  o.config.OrgID,
+				Region: o.config.Region,
+				RunID:  o.config.RunID,
+				Metric: sample.Metric.Name,
+				Value:  sample.Value,
 			}); err != nil {
 				o.logger.WithError(err).Error("error appending row to batch")
+
 				return
 			}
 		}
@@ -159,6 +167,7 @@ func (o *Output) flushMetrics() {
 
 	if err := batch.Send(); err != nil {
 		o.logger.WithError(err).Error("error sending batch")
+
 		return
 	}
 
