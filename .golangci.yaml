@@ -2,15 +2,7 @@
 linters:
   enable-all: true
   disable:
-    - interfacer  # deprecated (since v1.38.0) due to: The repository of the linter has been archived by the owner.
-    - maligned  # deprecated (since v1.38.0) due to: The repository of the linter has been archived by the owner. Replaced by govet 'fieldalignment'.
-    - scopelint  # deprecated (since v1.39.0) due to: The repository of the linter has been deprecated by the owner. Replaced by exportloopref.
-    - golint  # deprecated (since v1.41.0) due to: The repository of the linter has been archived by the owner. Replaced by revive.
-    - exhaustivestruct  # deprecated (since v1.46.0) due to: The owner seems to have abandoned the linter. Replaced by exhaustruct.
-    - ifshort  # deprecated (since v1.48.0) due to: The repository of the linter has been deprecated by the owner.
-    - nosnakecase  # deprecated (since v1.48.1) due to: The repository of the linter has been deprecated by the owner. Replaced by revive(var-naming).
-    - deadcode  # deprecated (since v1.49.0) due to: The owner seems to have abandoned the linter. Replaced by unused.
-    - structcheck  # deprecated (since v1.49.0) due to: The owner seems to have abandoned the linter. Replaced by unused.
-    - varcheck  # deprecated (since v1.49.0) due to: The owner seems to have abandoned the linter. Replaced by unused.
-
+    - gomnd  # deprecated (since v1.58.0) due to: The linter has been renamed. Replaced by mnd.
+    - execinquery  # deprecated (since v1.58.0) due to: The repository of the linter has been archived by the owner.
+    - exportloopref  # deprecated (since v1.60.2) due to: Since Go1.22 (loopvar) this linter is no longer relevant. Replaced by copyloopvar.
     - depguard  # due to: We don't need to guard which deps to use
