@@ -10,17 +10,15 @@ import (
 	"go.k6.io/k6/output"
 )
 
-const runOutputTableName = "run_output"
-
 // Output implements the output.Output interface.
 type Output struct {
-	output.SampleBuffer
-
-	config          Config
-	conn            clickhouse.Conn
-	periodicFlusher *output.PeriodicFlusher
+	config Config
+	conn   clickhouse.Conn
 
 	logger logrus.FieldLogger
+
+	periodicFlusher *output.PeriodicFlusher
+	output.SampleBuffer
 }
 
 var _ output.Output = new(Output)
@@ -28,12 +26,16 @@ var _ output.Output = new(Output)
 // outputRow represents a row of the run output.
 // NOTE: The fields are in snake_case to match the column names in the ClickHouse table.
 type outputRow struct {
-	RunID    string            `ch:"run_id"`
-	Time     time.Time         `ch:"time"`
-	Metric   string            `ch:"metric"`
-	Value    float64           `ch:"value"`
+	Time time.Time `ch:"time"`
+
 	Tags     map[string]string `ch:"tags"`
 	Metadata map[string]string `ch:"metadata"`
+
+	AccountID string  `ch:"account_id"`
+	Region    string  `ch:"region"`
+	RunID     string  `ch:"run_id"`
+	Metric    string  `ch:"metric"`
+	Value     float64 `ch:"value"`
 }
 
 // New creates an instance of the emitter.
@@ -79,6 +81,7 @@ func (o *Output) Start() error {
 
 	if err := o.conn.Exec(ctx, "USE "+database); err != nil {
 		o.logger.WithField("db", database).WithError(err).Error("provided database does not exist")
+
 		return fmt.Errorf("could not verify provided database: %w", err)
 	}
 
@@ -135,10 +138,11 @@ func (o *Output) flushMetrics() {
 
 	batch, err := o.conn.PrepareBatch(
 		ctx,
-		fmt.Sprintf("INSERT INTO %s.%s", o.config.ClientOptions.Auth.Database, runOutputTableName),
+		fmt.Sprintf("INSERT INTO %s.%s", o.config.ClientOptions.Auth.Database, o.config.Table),
 	)
 	if err != nil {
 		o.logger.WithError(err).Error("error preparing batch insert query")
+
 		return
 	}
 
@@ -150,14 +154,19 @@ func (o *Output) flushMetrics() {
 
 		for _, sample := range samples {
 			if err := batch.AppendStruct(&outputRow{
-				RunID:    o.config.RunID,
-				Time:     sample.Time,
-				Metric:   sample.Metric.Name,
-				Value:    sample.Value,
+				Time: sample.Time,
+
 				Tags:     sample.Tags.Map(),
 				Metadata: sample.Metadata,
+
+				AccountID: o.config.AccountID,
+				Region:    o.config.Region,
+				RunID:     o.config.RunID,
+				Metric:    sample.Metric.Name,
+				Value:     sample.Value,
 			}); err != nil {
 				o.logger.WithError(err).Error("error appending row to batch")
+
 				return
 			}
 		}
@@ -165,13 +174,11 @@ func (o *Output) flushMetrics() {
 
 	if err := batch.Send(); err != nil {
 		o.logger.WithError(err).Error("error sending batch")
+
 		return
 	}
 
 	o.logger.
-		WithFields(map[string]interface{}{
-			"duration": time.Since(start),
-			"count":    count,
-		}).
+		WithFields(logrus.Fields{"duration": time.Since(start), "count": count}).
 		Debug("emitted samples")
 }

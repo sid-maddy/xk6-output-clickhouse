@@ -1,8 +1,8 @@
 # User-defined
 /bin/
 
-# Created by https://www.toptal.com/developers/gitignore/api/linux,macos,goland,vim,visualstudiocode,go
-# Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,goland,vim,visualstudiocode,go
+# Created by https://www.toptal.com/developers/gitignore/api/linux,macos,go,goland,vim,visualstudiocode
+# Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,go,goland,vim,visualstudiocode
 
 ### Go ###
 # If you prefer the allow list template instead of the deny list, see community template:
@@ -226,4 +226,4 @@ tags
 .history
 .ionide
 
-# End of https://www.toptal.com/developers/gitignore/api/linux,macos,goland,vim,visualstudiocode,go
+# End of https://www.toptal.com/developers/gitignore/api/linux,macos,go,goland,vim,visualstudiocode
