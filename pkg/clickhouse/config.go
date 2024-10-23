@@ -13,18 +13,26 @@ import (
 
 // Config is the config for the ClickHouse output extension.
 type Config struct {
-	DSN   string `json:"dsn"`
-	RunID string `json:"run_id"`
-
-	PushInterval  types.NullDuration `json:"push_interval"`
-	LogLevel      logrus.Level       `json:"log_level"`
 	ClientOptions *clickhouse.Options
+
+	DSN   string `json:"dsn"`
+	Table string `json:"table"`
+
+	OrgID  string `json:"org_id"`
+	Region string `json:"region"`
+	RunID  string `json:"run_id"`
+
+	PushInterval types.NullDuration `json:"push_interval"`
+	LogLevel     logrus.Level       `json:"log_level"`
 }
 
 // NewConfig creates a new Config instance from the provided output.Params.
 func NewConfig(params output.Params) (*Config, error) {
 	cfg := Config{
+		Table: "run_output",
+
 		PushInterval: types.NullDurationFrom(1 * time.Second),
+		LogLevel:     logrus.InfoLevel,
 	}
 
 	// Apply from JSON
@@ -41,16 +49,25 @@ func NewConfig(params output.Params) (*Config, error) {
 	// Apply from environment
 	rawEnvConfig := params.Environment
 	if len(rawEnvConfig) > 0 {
-		for k, v := range rawEnvConfig {
+		for k, value := range rawEnvConfig {
 			switch k {
 			case "K6_CLICKHOUSE_DSN":
-				cfg.DSN = v
+				cfg.DSN = value
+
+			case "K6_CLICKHOUSE_TABLE":
+				cfg.Table = value
+
+			case "K6_CLICKHOUSE_ORG_ID":
+				cfg.OrgID = value
+
+			case "K6_CLICKHOUSE_REGION":
+				cfg.Region = value
 
 			case "K6_CLICKHOUSE_RUN_ID":
-				cfg.RunID = v
+				cfg.RunID = value
 
 			case "K6_CLICKHOUSE_PUSH_INTERVAL":
-				pushInterval, err := time.ParseDuration(v)
+				pushInterval, err := time.ParseDuration(value)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse environment variable 'K6_CLICKHOUSE_PUSH_INTERVAL': %w", err)
 				}
@@ -59,7 +76,6 @@ func NewConfig(params output.Params) (*Config, error) {
 
 			case "K6_CLICKHOUSE_LOG_LEVEL":
 				var err error
-
 				cfg.LogLevel, err = logrus.ParseLevel(value)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse environment variable 'K6_CLICKHOUSE_LOG_LEVEL': %w", err)
@@ -91,6 +107,18 @@ func NewConfig(params output.Params) (*Config, error) {
 func (c Config) apply(cfg Config) Config {
 	if cfg.DSN != "" {
 		c.DSN = cfg.DSN
+	}
+
+	if cfg.Table != "" {
+		c.Table = cfg.Table
+	}
+
+	if cfg.OrgID != "" {
+		c.OrgID = cfg.OrgID
+	}
+
+	if cfg.Region != "" {
+		c.Region = cfg.Region
 	}
 
 	if cfg.RunID != "" {
