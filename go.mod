@@ -4,7 +4,7 @@ go 1.23
 toolchain go1.24.1
 
 require (
-	github.com/ClickHouse/clickhouse-go/v2 v2.33.0
+	github.com/ClickHouse/clickhouse-go/v2 v2.33.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	go.k6.io/k6 v0.54.0
