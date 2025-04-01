@@ -1,7 +1,6 @@
 module github.com/sid-maddy/xk6-output-clickhouse
 
-go 1.23
-toolchain go1.24.1
+go 1.24
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.33.1
