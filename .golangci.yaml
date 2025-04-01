@@ -1,8 +1,7 @@
 ---
+version: '2'
+
 linters:
-  enable-all: true
+  default: all
   disable:
-    - gomnd  # deprecated (since v1.58.0) due to: The linter has been renamed. Replaced by mnd.
-    - execinquery  # deprecated (since v1.58.0) due to: The repository of the linter has been archived by the owner.
-    - exportloopref  # deprecated (since v1.60.2) due to: Since Go1.22 (loopvar) this linter is no longer relevant. Replaced by copyloopvar.
     - depguard  # due to: We don't need to guard which deps to use

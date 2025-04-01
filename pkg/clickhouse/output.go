@@ -44,9 +44,11 @@ func New(p output.Params) (*Output, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse config: %w", err)
 	}
+
 	setLoggerLevel(logger, config.LogLevel)
 
 	logger.Debug("opening connection to ClickHouse")
+
 	conn, err := clickhouse.Open(config.ClientOptions)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to ClickHouse: %w", err)
@@ -74,14 +76,20 @@ func (o *Output) Start() error {
 
 	database := o.config.ClientOptions.Auth.Database
 	o.logger.WithField("db", database).Debug("verifying provided database")
-	if err := o.conn.Exec(ctx, fmt.Sprintf("USE %s", database)); err != nil {
+
+	if err := o.conn.Exec(ctx, "USE "+database); err != nil {
 		o.logger.WithField("db", database).WithError(err).Error("provided database does not exist")
 		return fmt.Errorf("could not verify provided database: %w", err)
 	}
 
 	o.logger.Debug("verifying run output table")
-	if err := o.conn.Exec(ctx, "DESCRIBE TABLE run_output"); err != nil {
-		o.logger.WithField("table", runOutputTableName).WithError(err).Error("run output table does not exist")
+
+	if err := o.conn.Exec(ctx, fmt.Sprintf("DESCRIBE TABLE %s.%s", database, o.config.Table)); err != nil {
+		o.logger.
+			WithFields(logrus.Fields{"db": database, "table": o.config.Table}).
+			WithError(err).
+			Error("run output table does not exist")
+
 		return fmt.Errorf("could not verify run output table: %w", err)
 	}
 
@@ -89,6 +97,7 @@ func (o *Output) Start() error {
 	o.logger.WithField("push_interval", pushInterval).Debug("creating periodic flusher")
 
 	var err error
+
 	o.periodicFlusher, err = output.NewPeriodicFlusher(pushInterval, o.flushMetrics)
 	if err != nil {
 		return fmt.Errorf("could not create periodic flusher: %w", err)
@@ -121,6 +130,7 @@ func (o *Output) flushMetrics() {
 	}
 
 	start := time.Now()
+
 	o.logger.WithField("count", len(samples)).Debug("emitting samples")
 
 	batch, err := o.conn.PrepareBatch(
@@ -133,6 +143,7 @@ func (o *Output) flushMetrics() {
 	}
 
 	var count int
+
 	for _, sc := range samples {
 		samples := sc.GetSamples()
 		count += len(samples)

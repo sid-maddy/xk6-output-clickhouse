@@ -11,6 +11,7 @@ import (
 func init() {
 	output.RegisterExtension("clickhouse", func(p output.Params) (output.Output, error) {
 		var err error
+
 		o, err := clickhouse.New(p)
 		if err != nil {
 			return nil, fmt.Errorf("could not initialize ClickHouse extension: %w", err)

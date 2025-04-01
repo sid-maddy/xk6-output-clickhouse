@@ -59,7 +59,8 @@ func NewConfig(params output.Params) (*Config, error) {
 
 			case "K6_CLICKHOUSE_LOG_LEVEL":
 				var err error
-				cfg.LogLevel, err = logrus.ParseLevel(v)
+
+				cfg.LogLevel, err = logrus.ParseLevel(value)
 				if err != nil {
 					return nil, fmt.Errorf("could not parse environment variable 'K6_CLICKHOUSE_LOG_LEVEL': %w", err)
 				}
@@ -76,6 +77,7 @@ func NewConfig(params output.Params) (*Config, error) {
 	// Derive client config from address
 	if cfg.DSN != "" {
 		var err error
+
 		cfg.ClientOptions, err = parseDSN(cfg.DSN)
 		if err != nil {
 			return nil, err
