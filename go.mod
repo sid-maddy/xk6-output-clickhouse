@@ -3,7 +3,7 @@ module github.com/sid-maddy/xk6-output-clickhouse
 go 1.24
 
 require (
-	github.com/ClickHouse/clickhouse-go/v2 v2.33.1
+	github.com/ClickHouse/clickhouse-go/v2 v2.34.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
 	go.k6.io/k6 v0.54.0
@@ -30,7 +30,6 @@ require (
 	github.com/mstoykov/atlas v0.0.0-20220811071828-388f114305dd // indirect
 	github.com/paulmach/orb v0.11.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
