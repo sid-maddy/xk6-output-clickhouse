@@ -18,27 +18,18 @@ repos:
 
   - repo: local
     hooks:
-      - id: go-format
-        name: Go (Format)
-        description: Format Go files
+      - id: go-mod-tidy
+        name: Tidy the Go modules
+        description: Make sure go.mod matches the source code
         language: system
-        entry: make format
-        types_or:
-          - go
-          - go-mod
-          - go-sum
-          - gotmpl
+        entry: go mod tidy
+        pass_filenames: false
 
-      - id: go-lint
-        name: Go (Lint)
-        description: Lint Go files
-        language: system
-        entry: make lint
-        types_or:
-          - go
-          - go-mod
-          - go-sum
-          - gotmpl
+  - repo: https://github.com/golangci/golangci-lint
+    rev: 43d03392d7dc3746fa776dbddd66dfcccff70651  # frozen: v2.4.0
+    hooks:
+      - id: golangci-lint-fmt
+      - id: golangci-lint
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
     rev: a167de9d5f4e87e1cdb16cb560aa704b79b6f655  # frozen: 0.32.1
