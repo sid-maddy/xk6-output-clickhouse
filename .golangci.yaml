@@ -3,5 +3,74 @@ version: '2'
 
 linters:
   default: all
+
   disable:
-    - depguard  # due to: We don't need to guard which deps to use
+    - depguard  # We don't need to guard which deps to use
+    - noinlineerr  # Disagree
+    - wsl  # deprecated (since v2.2.0) due to: new major version. Replaced by wsl_v5.
+
+  exclusions:
+    generated: strict
+    warn-unused: true
+
+  settings:
+    errcheck:
+      exclude-functions:
+        - encoding/json.Marshal
+    gocritic:
+      enable-all: true
+    godot:
+      scope: all
+      capital: true
+    govet:
+      enable-all: true
+    iface:
+      enable:
+        - identical
+        - unused
+        - opaque
+        - unexported
+    spancheck:
+      checks:
+        - end
+        - record-error
+        - set-status
+    tagliatelle:
+      case:
+        rules:
+          ch: snake
+    testifylint:
+      enable-all: true
+    wsl_v5:
+      default: all
+
+formatters:
+  enable:
+    - gci
+    - gofumpt
+    - golines
+
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - blank
+        - dot
+        - alias
+        - localmodule
+      no-inline-comments: true
+    gofumpt:
+      extra-rules: true
+      module-path: github.com/sid-maddy/xk6-output-clickhouse
+    golines:
+      max-len: 120
+      shorten-comments: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  allow-parallel-runners: true
+  modules-download-mode: readonly
