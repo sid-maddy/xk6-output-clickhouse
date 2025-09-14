@@ -6,25 +6,33 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/sirupsen/logrus"
+	"go.k6.io/k6/metrics"
 	"go.k6.io/k6/output"
+	"go.uber.org/zap"
+
+	"github.com/sid-maddy/xk6-output-clickhouse/pkg/clickhouse/config"
+	"github.com/sid-maddy/xk6-output-clickhouse/pkg/clickhouse/logger"
 )
 
-// Output implements the output.Output interface.
+// Output implements the [output.Output] interface.
+//
+//nolint:govet // fieldalignment contradicts with embeddedstructfieldcheck
 type Output struct {
-	config Config
-	conn   clickhouse.Conn
-
-	logger logrus.FieldLogger
-
-	periodicFlusher *output.PeriodicFlusher
 	output.SampleBuffer
+
+	conn            clickhouse.Conn
+	periodicFlusher *output.PeriodicFlusher
+
+	config *config.Config
+	logger *zap.Logger
 }
 
 var _ output.Output = new(Output)
 
-// outputRow represents a row of the run output.
+// outputRow represents a row of the run metrics.
+//
 // NOTE: The fields are in snake_case to match the column names in the ClickHouse table.
+// NOTE: The field order is different from the ClickHouse table to minimize memory footprint.
 type outputRow struct {
 	Time time.Time `ch:"time"`
 
@@ -32,35 +40,37 @@ type outputRow struct {
 	Metadata map[string]string `ch:"metadata"`
 
 	AccountID string  `ch:"account_id"`
-	Region    string  `ch:"region"`
 	RunID     string  `ch:"run_id"`
+	Region    string  `ch:"region"`
 	Metric    string  `ch:"metric"`
 	Value     float64 `ch:"value"`
 }
 
-// New creates an instance of the emitter.
-func New(p output.Params) (*Output, error) {
-	logger := newLogger(p.StdOut)
-
-	config, err := NewConfig(p)
+// New creates an instance of the extension.
+func New(params *output.Params) (*Output, error) {
+	cfg, err := config.New(params)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse config: %w", err)
+		return nil, fmt.Errorf("error parsing config: %w", err)
 	}
 
-	setLoggerLevel(logger, config.LogLevel)
-
-	logger.Debug("opening connection to ClickHouse")
-
-	conn, err := clickhouse.Open(config.ClientOptions)
+	log, err := logger.New(cfg, params.StdOut)
 	if err != nil {
-		return nil, fmt.Errorf("could not connect to ClickHouse: %w", err)
+		return nil, fmt.Errorf("error initializing logger: %w", err)
 	}
 
+	log.Debug("Opening connection to ClickHouse")
+
+	conn, err := clickhouse.Open(cfg.ClientOptions)
+	if err != nil {
+		return nil, fmt.Errorf("error connecting to ClickHouse: %w", err)
+	}
+
+	//nolint:exhaustruct // periodicFlusher is set later.
 	return &Output{
-		config: *config,
-		conn:   conn,
+		conn: conn,
 
-		logger: logger,
+		config: cfg,
+		logger: log,
 	}, nil
 }
 
@@ -71,114 +81,130 @@ func (o *Output) Description() string {
 
 // Start performs initialization tasks prior to the engine using the output.
 func (o *Output) Start() error {
-	o.logger.Debug("starting")
-	defer o.logger.Debug("started")
+	o.logger.Debug("Starting")
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), config.DefaultConnectionVerificationTimeout)
+	defer cancel()
 
 	database := o.config.ClientOptions.Auth.Database
-	o.logger.WithField("db", database).Debug("verifying provided database")
+	log := o.logger.WithLazy(zap.String("db", database))
+	log.Debug("Verifying database")
 
 	if err := o.conn.Exec(ctx, "USE "+database); err != nil {
-		o.logger.WithField("db", database).WithError(err).Error("provided database does not exist")
+		o.logger.Error("Database does not exist", zap.Error(err))
 
-		return fmt.Errorf("could not verify provided database: %w", err)
+		return fmt.Errorf("error verifying database: %w", err)
 	}
 
-	o.logger.Debug("verifying run output table")
+	o.logger.Debug("Verifying table")
 
 	if err := o.conn.Exec(ctx, fmt.Sprintf("DESCRIBE TABLE %s.%s", database, o.config.Table)); err != nil {
-		o.logger.
-			WithFields(logrus.Fields{"db": database, "table": o.config.Table}).
-			WithError(err).
-			Error("run output table does not exist")
+		o.logger.Error("Table does not exist", zap.String("table", o.config.Table), zap.Error(err))
 
-		return fmt.Errorf("could not verify run output table: %w", err)
+		return fmt.Errorf("error verifying table: %w", err)
 	}
 
 	pushInterval := o.config.PushInterval.TimeDuration()
-	o.logger.WithField("push_interval", pushInterval).Debug("creating periodic flusher")
+	o.logger.Debug("Creating periodic flusher", zap.Duration("pushInterval", pushInterval))
 
-	var err error
-
-	o.periodicFlusher, err = output.NewPeriodicFlusher(pushInterval, o.flushMetrics)
+	periodicFlusher, err := output.NewPeriodicFlusher(pushInterval, o.flushMetrics)
 	if err != nil {
-		return fmt.Errorf("could not create periodic flusher: %w", err)
+		return fmt.Errorf("error creating periodic flusher: %w", err)
 	}
+
+	o.periodicFlusher = periodicFlusher
+
+	o.logger.Debug("Started")
 
 	return nil
 }
 
 // Stop flushes all remaining metrics and finalizes the test run.
 func (o *Output) Stop() error {
-	o.logger.Debug("stopping")
-	defer o.logger.Debug("stopped")
+	o.logger.Debug("Stopping")
 
 	o.periodicFlusher.Stop()
 
 	if err := o.conn.Close(); err != nil {
-		return fmt.Errorf("could not close ClickHouse connection: %w", err)
+		return fmt.Errorf("error closing ClickHouse connection: %w", err)
 	}
+
+	if err := o.logger.Sync(); err != nil {
+		return fmt.Errorf("error flushing logs: %w", err)
+	}
+
+	o.logger.Debug("Stopped")
 
 	return nil
 }
 
 // flushMetrics periodically flushes buffered metric samples to ClickHouse.
 func (o *Output) flushMetrics() {
-	ctx := context.Background()
-
 	samples := o.GetBufferedSamples()
 	if len(samples) == 0 {
 		return
 	}
 
-	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), o.config.PushInterval.TimeDuration())
+	defer cancel()
 
-	o.logger.WithField("count", len(samples)).Debug("emitting samples")
-
-	batch, err := o.conn.PrepareBatch(
-		ctx,
-		fmt.Sprintf("INSERT INTO %s.%s", o.config.ClientOptions.Auth.Database, o.config.Table),
-	)
+	batch, err := prepareBatch(ctx, o.logger, o.conn, o.config.ClientOptions.Auth.Database, o.config.Table)
 	if err != nil {
-		o.logger.WithError(err).Error("error preparing batch insert query")
+		return
+	}
+
+	if err := o.emit(ctx, batch, samples); err != nil {
+		o.logger.Error("Failed to emit samples to ClickHouse", zap.Error(err))
 
 		return
 	}
+}
+
+func (o *Output) emit(ctx context.Context, batch *Batch, sampleContainers []metrics.SampleContainer) error {
+	start := time.Now()
+
+	o.logger.Debug("Emitting samples to ClickHouse")
 
 	var count int
 
-	for _, sc := range samples {
-		samples := sc.GetSamples()
-		count += len(samples)
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("error emitting samples to ClickHouse: %w", ctx.Err())
 
-		for _, sample := range samples {
-			if err := batch.AppendStruct(&outputRow{
-				Time: sample.Time,
+	default:
+		for _, sc := range sampleContainers {
+			samples := sc.GetSamples()
 
-				Tags:     sample.Tags.Map(),
-				Metadata: sample.Metadata,
+			count += len(samples)
 
-				AccountID: o.config.AccountID,
-				Region:    o.config.Region,
-				RunID:     o.config.RunID,
-				Metric:    sample.Metric.Name,
-				Value:     sample.Value,
-			}); err != nil {
-				o.logger.WithError(err).Error("error appending row to batch")
+			for _, sample := range samples {
+				if err := batch.append(&outputRow{
+					Time: sample.Time,
 
-				return
+					Tags:     sample.Tags.Map(),
+					Metadata: sample.Metadata,
+
+					AccountID: o.config.AccountID,
+					Region:    o.config.Region,
+					RunID:     o.config.RunID,
+					Metric:    sample.Metric.Name,
+					Value:     sample.Value,
+				}); err != nil {
+					return err
+				}
 			}
 		}
+
+		if err := batch.send(); err != nil {
+			return err
+		}
+
+		o.logger.Debug(
+			"Emitted samples to ClickHouse",
+			zap.Duration("duration", time.Since(start)),
+			zap.Int("count", count),
+		)
+
+		return nil
 	}
-
-	if err := batch.Send(); err != nil {
-		o.logger.WithError(err).Error("error sending batch")
-
-		return
-	}
-
-	o.logger.
-		WithFields(logrus.Fields{"duration": time.Since(start), "count": count}).
-		Debug("emitted samples")
 }

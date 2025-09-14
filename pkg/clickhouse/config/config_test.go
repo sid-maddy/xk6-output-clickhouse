@@ -1,21 +1,23 @@
-package clickhouse_test
+package config_test
 
 import (
 	"encoding/json"
 	"testing"
 	"time"
 
-	"github.com/sid-maddy/xk6-output-clickhouse/pkg/clickhouse"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"go.k6.io/k6/lib/types"
 	"go.k6.io/k6/output"
+	"go.uber.org/zap/zapcore"
+
+	"github.com/sid-maddy/xk6-output-clickhouse/pkg/clickhouse/config"
 )
 
 func TestConfig(t *testing.T) {
 	t.Parallel()
 
-	// TODO: add more cases
+	// TODO: add more cases.
+	//nolint:exhaustruct // Tests with defaults, which may be overridden.
 	testCases := map[string]struct {
 		env map[string]string
 
@@ -23,14 +25,14 @@ func TestConfig(t *testing.T) {
 		err string
 
 		jsonRaw json.RawMessage
-		config  clickhouse.Config
+		config  config.Config
 	}{
 		"default": {
-			config: clickhouse.Config{
-				Table: "run_output",
+			config: config.Config{
+				Table: config.DefaultTableName,
 
-				PushInterval: types.NullDurationFrom(1 * time.Second),
-				LogLevel:     logrus.InfoLevel,
+				PushInterval: types.NullDurationFrom(config.DefaultPushInterval),
+				LogLevel:     config.DefaultLogLevel,
 			},
 		},
 
@@ -45,7 +47,7 @@ func TestConfig(t *testing.T) {
 				"K6_CLICKHOUSE_LOG_LEVEL":     "debug",
 			},
 
-			config: clickhouse.Config{
+			config: config.Config{
 				DSN:   "clickhouse://user:pass@localhost:9000/k6",
 				Table: "k6_run_output",
 
@@ -54,7 +56,7 @@ func TestConfig(t *testing.T) {
 				RunID:     "00000000-0000-0000-0000-000000000002",
 
 				PushInterval: types.NullDurationFrom(4 * time.Millisecond),
-				LogLevel:     logrus.DebugLevel,
+				LogLevel:     zapcore.DebugLevel,
 			},
 		},
 
@@ -71,7 +73,7 @@ func TestConfig(t *testing.T) {
 
 			err: `time: unknown unit "something" in duration "4something"`,
 
-			config: clickhouse.Config{
+			config: config.Config{
 				DSN:   "clickhouse://user:pass@localhost:9000/k6",
 				Table: "k6_run_output",
 
@@ -80,7 +82,7 @@ func TestConfig(t *testing.T) {
 				RunID:     "00000000-0000-0000-0000-000000000002",
 
 				PushInterval: types.NullDurationFrom(4 * time.Second),
-				LogLevel:     logrus.DebugLevel,
+				LogLevel:     zapcore.DebugLevel,
 			},
 		},
 	}
@@ -89,7 +91,8 @@ func TestConfig(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			config, err := clickhouse.NewConfig(output.Params{Environment: testCase.env})
+			//nolint:exhaustruct // Params has defaults, which may be overridden.
+			cfg, err := config.New(&output.Params{Environment: testCase.env})
 
 			if testCase.err != "" {
 				require.Error(t, err)
@@ -100,15 +103,15 @@ func TestConfig(t *testing.T) {
 
 			require.NoError(t, err)
 
-			require.Equal(t, testCase.config.DSN, config.DSN)
-			require.Equal(t, testCase.config.Table, config.Table)
+			require.Equal(t, testCase.config.DSN, cfg.DSN)
+			require.Equal(t, testCase.config.Table, cfg.Table)
 
-			require.Equal(t, testCase.config.AccountID, config.AccountID)
-			require.Equal(t, testCase.config.Region, config.Region)
-			require.Equal(t, testCase.config.RunID, config.RunID)
+			require.Equal(t, testCase.config.AccountID, cfg.AccountID)
+			require.Equal(t, testCase.config.Region, cfg.Region)
+			require.Equal(t, testCase.config.RunID, cfg.RunID)
 
-			require.Equal(t, testCase.config.PushInterval, config.PushInterval)
-			require.Equal(t, testCase.config.LogLevel, config.LogLevel)
+			require.Equal(t, testCase.config.PushInterval, cfg.PushInterval)
+			require.Equal(t, testCase.config.LogLevel, cfg.LogLevel)
 		})
 	}
 }
